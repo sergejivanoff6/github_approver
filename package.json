@@ -1,0 +1,11 @@
+{
+  "name": "github-approver",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "approve": "node approve-dependabot-prs.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.0"
+  }
+}
