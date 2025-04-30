@@ -22,7 +22,7 @@ The script `approve-dependabot-prs.js` (ESM) does three things:
 
 ## Prerequisites
 
-* **Node.js 20 or later** (ESM support).  
+* **Node.js 20 or later** (ESM support).
   `nvm install 20 && nvm use 20`
 * A **GitHub Personal Access Token** with at least **`repo`** scope.
 * Branch‑protection rule option **“Allow pull request branch to be updated automatically.”** (on by default).
@@ -53,6 +53,7 @@ $ npm install
    my‑org/backend
    my‑org/frontend
    ```
+3. git update-index --assume-unchanged repos.txt token.txt
 
 > **Tip** – you can symlink or copy these files from a safe location.
 
@@ -93,7 +94,7 @@ Append the following (runs **every Saturday at 09:00** local time):
 | `* *` | any day‑of‑month, any month |
 | `Sat` | Saturday |
 
-**Why the `cd`?** It ensures the script finds `token.txt`, `repos.txt`, and writes logs in the repo directory.  
+**Why the `cd`?** It ensures the script finds `token.txt`, `repos.txt`, and writes logs in the repo directory.
 `>> approve.log 2>&1` appends both stdout and stderr to `approve.log`.
 
 Check, edit, or remove the entry with:
@@ -116,10 +117,10 @@ flowchart TD
   C --> D{Dependabot PR?}
   D -->|No| B
   D -->|Yes| E[Fetch PR details]
-  E --> F{mergeable_state == "behind"?}
-  F -->|Yes| G[PUT /update‑branch\nCI reruns] --> B
+  E --> F{Behind?}
+  F -->|Yes| G[PUT /update-branch<br/>CI reruns] --> B
   F -->|No| H[Check combined status API]
-  H --> I{state == "success"?}
+  H --> I{CI success?}
   I -->|No| B
   I -->|Yes| J{Already approved by me?}
   J -->|Yes| B
@@ -149,4 +150,3 @@ Before approving, the script calls `pulls.listReviews` to see if **you** (the to
 * If the branch has **merge conflicts** (`mergeable_state == "dirty"`), the script leaves it alone.
 * It assumes CI sets **commit statuses**. If you rely only on GitHub Actions Checks, modify `isPullRequestGreen` accordingly.
 * The PAT must have permission to **update branches** and **create reviews**.
-
