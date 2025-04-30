@@ -20,7 +20,7 @@ The script `approve-dependabot-prs.js` (ESM) does three things:
 
 ---
 
-## Prerequisites
+## Prerequisites
 
 * **Node.js 20 or later** (ESM support).
   `nvm install 20 && nvm use 20`
@@ -29,7 +29,7 @@ The script `approve-dependabot-prs.js` (ESM) does three things:
 
 ---
 
-## Installation
+## Installation
 
 ```bash
 # 1 Clone or drop the two files into any folder
@@ -42,7 +42,7 @@ $ npm install
 
 ---
 
-## Configuration
+## Configuration
 
 1. **`token.txt`** – put your PAT on a single line:
    ```text
@@ -59,7 +59,7 @@ $ npm install
 
 ---
 
-## Running
+## Running
 
 ```bash
 # Approve Dependabot PRs in all listed repos
@@ -108,7 +108,7 @@ The script will now run automatically every Saturday, keeping Dependabot PRs syn
 
 ---
 
-## How it works
+## How it works
 
 ```mermaid
 flowchart TD
@@ -130,13 +130,13 @@ flowchart TD
 
 ---
 
-## Duplicate‑approval prevention
+## Duplicate‑approval prevention
 
 Before approving, the script calls `pulls.listReviews` to see if **you** (the token owner) have already given an `APPROVED` review. If yes, it logs a message and skips.
 
 ---
 
-## Customising
+## Customising
 
 * **Merge after approval** – call `octokit.pulls.merge` right after the approval step.
 * **Checks + Statuses hybrid** – in `isPullRequestGreen`, combine the two APIs if your repo uses both.
@@ -145,7 +145,7 @@ Before approving, the script calls `pulls.listReviews` to see if **you** (the to
 
 ---
 
-## Limitations / Caveats
+## Limitations / Caveats
 
 * If the branch has **merge conflicts** (`mergeable_state == "dirty"`), the script leaves it alone.
 * It assumes CI sets **commit statuses**. If you rely only on GitHub Actions Checks, modify `isPullRequestGreen` accordingly.
