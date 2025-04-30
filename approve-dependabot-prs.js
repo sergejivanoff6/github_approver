@@ -95,12 +95,12 @@ async function syncBranchIfBehind(owner, repo, pr) {
       },
     );
 
-    console.log("      ➜ update-branch request queued 🎉");
+    console.log("      ➜ update-branch request queued");
     return true; // we triggered a sync
   } catch (err) {
     // 422 “Branch was not updated” === already up-to-date or conflicts
     if (err.status === 422) {
-      console.log(`      ⚠️  update-branch skipped: ${err.message}`);
+      console.log(`      update-branch skipped: ${err.message}`);
     } else {
       console.error(
         `      ✖ couldn’t update branch: ${err.message || err.toString()}`,
@@ -149,6 +149,12 @@ async function approvePullRequest(owner, repo, pullNumber) {
  * Main function that loops through the repos and approves any eligible Dependabot PRs.
  */
 async function main() {
+  let stats = {
+    approved: 0,
+    skipped: 0,
+    updated: 0,
+  };
+
   for (const fullName of repos) {
     const [owner, repo] = fullName.split("/");
     if (!owner || !repo) {
@@ -191,6 +197,7 @@ async function main() {
         // (B)  ── If it’s behind, trigger the sync
         const updated = await syncBranchIfBehind(owner, repo, prDetails);
         if (updated) {
+          stats.updated++;
           // We stop here; CI will re-run. Next cron run of the script will pick it up.
           continue;
         }
@@ -199,16 +206,31 @@ async function main() {
         const green = await isPullRequestGreen(owner, repo, pr);
         if (!green) {
           console.log(`    PR #${pr.number} is NOT green. Skipping approval.`);
+          stats.skipped++;
           continue;
         }
 
         console.log(`    PR #${pr.number} is green! Approving...`);
         await approvePullRequest(owner, repo, pr.number);
+        stats.approved++;
       }
     } catch (err) {
       console.error(`Error processing ${owner}/${repo}: ${err.message}`);
+      stats.skipped++;
     }
   }
+
+  // Final statistics output
+  console.log("\n─────────────────────────────");
+  console.log("📊  SumMary");
+  console.log("─────────────────────────────");
+
+  const labelPad = 10;
+  console.log(`✅ Approved : ${stats.approved.toString().padStart(3)} PRs`);
+  console.log(`⏭️  Skipped  : ${stats.skipped.toString().padStart(3)} PRs`);
+  console.log(`🔄 Updated  : ${stats.updated.toString().padStart(3)} PRs`);
+
+  console.log("─────────────────────────────\n");
 }
 
 // Run main
