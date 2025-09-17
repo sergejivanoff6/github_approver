@@ -146,6 +146,32 @@ async function approvePullRequest(owner, repo, pullNumber) {
 }
 
 /**
+ * Check if the current token has access to the organization (SAML SSO check)
+ */
+async function checkSAMLAccess(owner) {
+  try {
+    // Try to access organization info - this will fail if SAML SSO blocks access
+    await octokit.orgs.get({ org: owner });
+    return { hasAccess: true, error: null };
+  } catch (error) {
+    if (error.status === 403) {
+      return {
+        hasAccess: false,
+        error: `SAML SSO: Token not authorized for organization '${owner}'. Please authorize your token at: https://github.com/settings/tokens`,
+      };
+    }
+    if (error.status === 401) {
+      return {
+        hasAccess: false,
+        error: `Authentication failed: Invalid or expired token. Please check your token in ${TOKEN_FILE}`,
+      };
+    }
+    // For other errors, assume we have access and let specific API calls handle it
+    return { hasAccess: true, error: null };
+  }
+}
+
+/**
  * Main function that loops through the repos and approves any eligible Dependabot PRs.
  */
 async function main() {
@@ -153,7 +179,11 @@ async function main() {
     approved: 0,
     skipped: 0,
     updated: 0,
+    saml_blocked: 0,
   };
+
+  // Track organizations we've already checked for SAML access
+  const orgAccessCache = new Map();
 
   for (const fullName of repos) {
     const [owner, repo] = fullName.split("/");
@@ -165,6 +195,20 @@ async function main() {
     }
 
     console.log(`\nProcessing repository: ${owner}/${repo}`);
+
+    // Check SAML access for this organization (cached)
+    if (!orgAccessCache.has(owner)) {
+      console.log(`  Checking SAML SSO access for organization: ${owner}`);
+      const accessCheck = await checkSAMLAccess(owner);
+      orgAccessCache.set(owner, accessCheck);
+    }
+
+    const accessInfo = orgAccessCache.get(owner);
+    if (!accessInfo.hasAccess) {
+      console.error(`  ❌ ${accessInfo.error}`);
+      stats.saml_blocked++;
+      continue;
+    }
 
     try {
       // 1. List open PRs
@@ -215,22 +259,39 @@ async function main() {
         stats.approved++;
       }
     } catch (err) {
-      console.error(`Error processing ${owner}/${repo}: ${err.message}`);
-      stats.skipped++;
+      if (err.status === 403) {
+        console.error(`❌ SAML SSO: Access denied to ${owner}/${repo}. Token may need reauthorization.`);
+        stats.saml_blocked++;
+      } else if (err.status === 401) {
+        console.error(`❌ Authentication failed for ${owner}/${repo}. Check your token.`);
+        stats.saml_blocked++;
+      } else {
+        console.error(`Error processing ${owner}/${repo}: ${err.message}`);
+        stats.skipped++;
+      }
     }
   }
 
   // Final statistics output
   console.log("\n─────────────────────────────");
-  console.log("📊  SumMary");
+  console.log("📊  Summary");
   console.log("─────────────────────────────");
 
-  const labelPad = 10;
-  console.log(`✅ Approved : ${stats.approved.toString().padStart(3)} PRs`);
-  console.log(`⏭️  Skipped  : ${stats.skipped.toString().padStart(3)} PRs`);
-  console.log(`🔄 Updated  : ${stats.updated.toString().padStart(3)} PRs`);
+  console.log(`✅ Approved    : ${stats.approved.toString().padStart(3)} PRs`);
+  console.log(`⏭️  Skipped     : ${stats.skipped.toString().padStart(3)} PRs`);
+  console.log(`🔄 Updated     : ${stats.updated.toString().padStart(3)} PRs`);
+  if (stats.saml_blocked > 0) {
+    console.log(`🔒 SAML Blocked: ${stats.saml_blocked.toString().padStart(3)} repos`);
+  }
 
-  console.log("─────────────────────────────\n");
+  console.log("─────────────────────────────");
+  
+  if (stats.saml_blocked > 0) {
+    console.log("\n🔐 SAML SSO Issue Detected:");
+    console.log("   Your token needs authorization for SSO-enabled organizations.");
+    console.log("   Visit: https://github.com/settings/tokens");
+    console.log("   Find your token and click 'Enable SSO' for affected organizations.\n");
+  }
 }
 
 // Run main

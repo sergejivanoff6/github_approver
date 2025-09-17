@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "approve": "node approve-dependabot-prs.js"
+    "approve": "node approve-dependabot-prs.js",
+    "check-token": "node check-token-status.js"
   },
   "dependencies": {
     "@octokit/rest": "^20.0.0"

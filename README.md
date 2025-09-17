@@ -24,7 +24,8 @@ The script `approve-dependabot-prs.js` (ESM) does three things:
 
 * **Node.js 20 or later** (ESM support).
   `nvm install 20 && nvm use 20`
-* A **GitHub Personal Access Token** with at least **`repo`** scope.
+* A **GitHub Personal Access Token (Classic)** with **`repo`** scope.
+* **SAML SSO**: If your organization uses SAML SSO, your token must be authorized for the organization (see SAML SSO Setup Guide below).
 * Branch‑protection rule option **“Allow pull request branch to be updated automatically.”** (on by default).
 
 ---
@@ -44,9 +45,9 @@ $ npm install
 
 ## Configuration
 
-1. **`token.txt`** – put your PAT on a single line:
+1. **`token.txt`** – put your Classic PAT on a single line:
    ```text
-   ghp_xxx…
+   ghp_xxxxxxxxxxxxxxxxxxxx
    ```
 2. **`repos.txt`** – one `owner/repo` per line:
    ```text
@@ -64,12 +65,16 @@ $ npm install
 ```bash
 # Approve Dependabot PRs in all listed repos
 npm run approve
+
+# Check token status and SAML SSO access (useful for troubleshooting)
+npm run check-token
 ```
 
-`npm run approve` is defined in **package.json**:
+Scripts defined in **package.json**:
 ```json
 "scripts": {
-  "approve": "node approve-dependabot-prs.js"
+  "approve": "node approve-dependabot-prs.js",
+  "check-token": "node check-token-status.js"
 }
 ```
 
@@ -105,6 +110,65 @@ crontab -e   # edit / delete
 ```
 
 The script will now run automatically every Saturday, keeping Dependabot PRs synced and auto‑approved.
+
+---
+
+## SAML SSO Setup Guide
+
+If your organization has enabled SAML SSO, you'll need to create and authorize a Personal Access Token. The script includes improved error handling and diagnostics for SAML SSO environments.
+
+> 🎯 **Quick Test**: Run `npm run check-token` after setup to verify everything works!
+
+### Recommended Approach: Classic Personal Access Token
+
+**For enterprise organizations (like most companies), Classic PATs work best with SAML SSO:**
+
+#### Step 1: Create Classic Token
+1. Go to [Personal Access Tokens (Classic)](https://github.com/settings/tokens)
+2. Click **"Generate new token (classic)"**
+3. Configure:
+   - **Note**: `dependabot-approver-script`
+   - **Expiration**: `90 days` (recommended)
+   - **Scopes**: ✅ `repo` (Full control of private repositories)
+4. Click **"Generate token"** and copy it immediately
+
+#### Step 2: Update Token File
+```bash
+# Replace content in token.txt with your new token
+echo "ghp_your_new_token_here" > token.txt
+```
+
+#### Step 3: Authorize for SAML SSO
+1. Return to [Personal Access Tokens](https://github.com/settings/tokens)
+2. Find your token and click **"Enable SSO"** next to your organization
+3. Complete the SAML authentication process
+
+#### Step 4: Test Setup
+```bash
+npm run check-token  # Should show organization access
+npm run approve      # Should work without "Not Found" errors
+```
+
+### Alternative: Fine-grained Tokens (Limited Enterprise Support)
+
+**Note**: Many enterprise organizations disable Fine-grained tokens, so they may not work for your repositories.
+
+If your organization supports Fine-grained tokens:
+1. Go to [Fine-grained Tokens](https://github.com/settings/personal-access-tokens/new)
+2. Select your organization and specific repositories
+3. Grant permissions: Pull requests (read/write), Contents (read), Actions (read)
+4. If you can't see your repositories in the selection list, your org has disabled Fine-grained tokens
+
+### GitHub App (Advanced)
+For organizations requiring enhanced security, consider creating a GitHub App instead of using Personal Access Tokens.
+
+### Common Issues:
+
+| Issue | Cause | Solution |
+|-------|--------|----------|
+| "Not Found" errors for all repos | Token not authorized for SAML SSO | Complete Step 3 above |
+| Can't see repos in Fine-grained token UI | Organization disabled Fine-grained tokens | Use Classic PAT instead |
+| 403 Forbidden errors | Token needs re-authorization | Re-enable SSO for your token |
 
 ---
 
