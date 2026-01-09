@@ -4,6 +4,27 @@ import fs from "node:fs";
 import process from "node:process";
 import { Octokit } from "@octokit/rest";
 
+// Utility function to get formatted timestamp
+function getTimestamp() {
+  return new Date().toISOString().replace('T', ' ').slice(0, 19);
+}
+
+// Override console.log to include timestamps
+const originalLog = console.log;
+console.log = (...args) => {
+  originalLog(`[${getTimestamp()}]`, ...args);
+};
+
+const originalError = console.error;
+console.error = (...args) => {
+  originalError(`[${getTimestamp()}]`, ...args);
+};
+
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  originalWarn(`[${getTimestamp()}]`, ...args);
+};
+
 // Paths to your text files
 const TOKEN_FILE = "token.txt";
 const REPOS_FILE = "repos.txt";
